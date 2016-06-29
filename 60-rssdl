@@ -1,0 +1,33 @@
+#!/bin/bash
+
+FINISHED_DIR=""
+EXCLUSIONS=""
+
+LAST_LOGIN_TIME=$(last --time-format iso $USER | grep -v still | head -1 | awk '{print $6}')
+OLD_IFS=$IFS
+
+TIMEZONE=$(date +%z)
+
+[ -L $FINISHED_DIR ] && DIR=$FINISHED_DIR"/" || DIR=$FINISHED_DIR
+FILES=""
+
+EXCLUDE=''
+IFS=' '
+for i in ${EXCLUSIONS}; do
+	EXCLUDE="${EXCLUDE} -not -path ${FINISHED_DIR}/${i}"
+done
+
+FIND="find $DIR -maxdepth 1 $EXCLUDE -newerct $LAST_LOGIN_TIME -printf '%TY-%Tm-%Td %TH:%TM -> \\\e[1;38;5;21m%f\\\e[0m\n'"
+IFS=$'\n'
+for file in $(eval $FIND | grep -v ${FINISHED_DIR##*/}); do
+	FILES=$FILES$file"\n"
+done
+
+if [[ $FILES != "" ]]; then
+	echo -e "\e[1;38;5;40mNew downloads since last login:\e[0m\n"
+	echo -e $FILES
+else
+	echo -e "\e[1;38;5;166mNo new downloads since last login.\n\e[0m"
+fi
+
+IFS=$OLDIFS
