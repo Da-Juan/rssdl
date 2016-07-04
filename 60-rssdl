@@ -4,6 +4,9 @@ FINISHED_DIR=""
 EXCLUSIONS=""
 
 LAST_LOGIN_TIME=$(last --time-format iso $USER | grep -v still | head -1 | awk '{print $6}')
+if [ -z $LAST_LOGIN_TIME ]; then
+	LAST_LOGIN_TIME=$(last -f /var/log/wtmp.1 --time-format iso $USER | grep -v still | head -1 | awk '{print $6}')
+fi
 OLD_IFS=$IFS
 
 TIMEZONE=$(date +%z)
@@ -17,7 +20,7 @@ for i in ${EXCLUSIONS}; do
 	EXCLUDE="${EXCLUDE} -not -path ${FINISHED_DIR}/${i}"
 done
 
-FIND="find $DIR -maxdepth 1 $EXCLUDE -newerct $LAST_LOGIN_TIME -printf '%TY-%Tm-%Td %TH:%TM -> \\\e[1;38;5;21m%f\\\e[0m\n'"
+FIND="find $DIR -maxdepth 1 $EXCLUDE -newerct $LAST_LOGIN_TIME -printf '%TY-%Tm-%Td %TH:%TM -> \\\e[1;38;5;38m%f\\\e[0m\n'"
 IFS=$'\n'
 for file in $(eval $FIND | grep -v ${FINISHED_DIR##*/}); do
 	FILES=$FILES$file"\n"
