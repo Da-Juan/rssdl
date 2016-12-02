@@ -41,8 +41,8 @@ schedule2 = watch_directory_2,5,5,"load.start=/home/rtorrent/Torrents/Dir2/*.tor
 
 # On completion, move the torrent to the directory from custom1 or to default directory if custom1 is not set.
 method.insert = is_custom1_set,simple,"and={d.custom1=}"
-method.insert = move_to_default_dir,simple,"d.directory.set=/home/rtorrent/Finished/;execute=mv,-u,$d.get_base_path=,/home/rtorrent/Finished/"
-method.insert = move_to_custom1,simple,"d.directory.set=$d.custom1=;execute=mv,-u,$d.get_base_path=,$d.custom1="
+method.insert = move_to_default_dir,simple,"d.directory.set=/home/rtorrent/Finished/;execute=mv,-u,$d.get_base_path=,/home/rtorrent/Finished/;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.get_name="
+method.insert = move_to_custom1,simple,"d.directory.set=$d.custom1=;execute=mv,-u,$d.get_base_path=,$d.custom1=;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.get_name="
 method.set_key = event.download.finished,move_complete,"branch=is_custom1_set=,move_to_custom1=,move_to_default_dir="
 
 # Close torrents when diskspace is low.
