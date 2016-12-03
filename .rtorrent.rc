@@ -32,10 +32,6 @@ session = /home/rtorrent/.sessions
 
 # Watch a directory for new torrents, and stop those that have been
 # deleted.
-#schedule = watch_directory,5,5,load_start=/home/rtorrent/Torrents/*.torrent
-#*/
-#schedule = tied_directory,6,5,start_tied=
-#schedule = untied_directory,7,5,stop_untied=
 schedule2 = watch_directory_1,5,5,"load.start=/home/rtorrent/Torrents/Dir1/*.torrent,d.custom1.set=/home/rtorrent/Finished/Dir1/"
 schedule2 = watch_directory_2,5,5,"load.start=/home/rtorrent/Torrents/Dir2/*.torrent,d.custom1.set=/home/rtorrent/Finished/Dir2/"
 
@@ -62,7 +58,7 @@ ratio.max.set=300
 ratio.upload.set=1G
 
 # When seeding ratio is reached close the torrent
-system.method.set = group.seeding.ratio.command, d.close=
+system.method.set = group.seeding.ratio.command, d.close=, d.erase=
 
 # Port range to use for listening.
 port_range = 33101-33199
