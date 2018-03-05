@@ -46,7 +46,7 @@ def readconfig():
 
     config_file = path.join(path.dirname(path.realpath(__file__)), 'rssdl.yml')
     if not path.isfile(config_file):
-        print('ERROR: configuration file not found! ({0})'.format(config_file))
+        logger.error('Configuration file not found! (%s)', config_file)
         sys.exit(1)
     else:
         with open(config_file, 'r') as f:
@@ -55,7 +55,7 @@ def readconfig():
         try:
             config['feed_url']
         except KeyError:
-            print('ERROR: feed_url is not set in configuration file.')
+            logger.error('feed_url is not set in configuration file.')
             sys.exit(1)
         else:
             feed_url = config['feed_url']
@@ -63,12 +63,11 @@ def readconfig():
         try:
             config['torrents_dir']
         except KeyError:
-            print('ERROR: torrents_dir is not set in configuration file.')
+            logger.error('torrents_dir is not set in configuration file.')
             sys.exit(1)
         else:
             if not path.isdir(config['torrents_dir']):
-                print('ERROR: {0} is not a '
-                        'directory.'.format(config['torrents_dir']))
+                logger.error('%s is not a directory.', config['torrents_dir'])
                 sys.exit(1)
             else:
                 if config['torrents_dir'][:1] == '~':
@@ -110,9 +109,9 @@ def magnet2torrent(magnet, output_dir):
         try:
             sleep(1)
         except KeyboardInterrupt:
-            print("Aborting...")
+            logger.debug('Aborting...')
             session.pause()
-            print("Cleanup dir " + tempdir)
+            logger.debug('Cleanup dir %s', tempdir)
             shutil.rmtree(tempdir)
             sys.exit(0)
     session.pause()
@@ -125,7 +124,7 @@ def magnet2torrent(magnet, output_dir):
     torcontent = lt.bencode(torfile.generate())
     with open(output, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
-    logger.debug("Saved! Cleaning up dir: " + tempdir)
+    logger.debug('Saved! Cleaning up dir: %s', tempdir)
     session.remove_torrent(handle)
     shutil.rmtree(tempdir)
 
@@ -149,49 +148,71 @@ def downloadtorrent(url, output_dir, filename):
 
         return filename
     else:
-        logger.error('Error {0} while downloading file {1}'
-                'Exiting...'.format(r.status_code, url))
+        logger.error(
+            'Error %s while downloading %s. Exiting...',
+            r.status_code,
+            url
+        )
         sys.exit(1)
 
 if __name__ == '__main__':
-    logging.basicConfig(filename = log_file, format = '%(asctime)s - '
-            '%(levelname)s - %(module)s - %(message)s', level = logging.INFO)
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    logfileFormatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(module)s - %(message)s'
+    )
+    logfileHandler = logging.FileHandler(log_file)
+    logfileHandler.setFormatter(logfileFormatter)
+    logger.addHandler(logfileHandler)
+
+    if sys.stdout.isatty():
+        logconsoleFormatter = logging.Formatter('%(levelname)s: %(message)s')
+        logconsoleHandler = logging.StreamHandler()
+        logconsoleHandler.setFormatter(logconsoleFormatter)
+        logger.addHandler(logconsoleHandler)
 
     readconfig()
 
-    if debug == True:
+    if debug:
         logger.setLevel(logging.DEBUG)
         logger.debug('Starting in debug mode...')
 
-
     feed = feedparser.parse(feed_url)
     if feed.bozo == 1:
-        logger.error('Error parsing RSS feed: {0} at line '
-                '{1}'.format(feed.bozo_exception.getMessage(),
-                    feed.bozo_exception.getLineNumber()))
+        logger.error(
+            'Error parsing RSS feed: %s at line %s',
+            feed.bozo_exception.getMessage(),
+            feed.bozo_exception.getLineNumber()
+        )
         sys.exit(1)
 
     if path.isfile(last_file):
         with open(last_file, 'r') as f:
             last_entry = f.read().strip('\n')
     else:
-        logger.warning('File {0} not found'.format(last_file))
+        logger.warning('File %s not found', last_file)
         last_entry = ''
     i = 0
     while feed.entries[i].id != last_entry:
         if feed.entries[i].link.split(':',1)[:1][0] == 'magnet':
-            logger.info('Downloading: '
-                    '{0}'.format(magnet2torrent(feed.entries[i].link,
-                        torrents_dir)))
+            logger.info(
+                'Downloading: %s',
+                magnet2torrent(feed.entries[i].link, torrents_dir)
+            )
         elif re.match('^https?.*\.torrent$', feed.entries[i].link):
-            logger.info('Downloading: '
-                    '{0}'.format(downloadtorrent(feed.entries[i].link,
-                        torrents_dir, re.sub(' ', '.',
-                            feed.entries[i].tv_raw_title) + '.torrent')))
+            logger.info(
+                'Downloading: %s',
+                downloadtorrent(
+                    feed.entries[i].link,
+                    torrents_dir,
+                    re.sub(' ', '.', feed.entries[i].tv_raw_title) + '.torrent')
+            )
         else:
-            logger.warning('Skipping unknown URL: '
-                    '{0}'.format(feed.entries[i].link))
+            logger.warning(
+                'Skipping unknown URL: %s',
+                feed.entries[i].link
+            )
         i += 1
         if i == len(feed.entries):
             break
@@ -200,5 +221,5 @@ if __name__ == '__main__':
     if last_entry != feed.entries[0].id:
         with open(last_file, 'w') as f:
             f.write('{0}\n'.format(feed.entries[0].id))
-        logger.debug('New last_entry ID: {0}'.format(feed.entries[0].id))
+        logger.debug('New last_entry ID: %s', feed.entries[0].id)
     sys.exit(0)
