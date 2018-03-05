@@ -33,13 +33,6 @@ debug = False
 log_file = path.join(path.expanduser('~'), 'rssdl.log')
 last_file = path.join(path.expanduser('~'), '.rssdl')
 
-def is_true(string):
-    if re.match('[Tt]rue', string):
-        return True
-    elif re.match('[Ff]alse', string):
-        return False
-    else:
-        return None
 
 def readconfig():
     global feed_url, torrents_dir, debug
@@ -76,12 +69,8 @@ def readconfig():
                 else:
                     torrents_dir = config['torrents_dir']
 
-        try:
-            config['debug']
-        except KeyError:
-            pass
-        else:
-            debug = is_true(str(config['debug']))
+        debug = config.get('debug', False)
+
 
 def magnet2torrent(magnet, output_dir):
     '''
