@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 '''
     RSSdl Automatic torrent downloader for http://showrss.info/ RSS feed
-    Copyright (C) 2016 Nicolas Rouanet 
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +91,7 @@ def magnet2torrent(magnet, output_dir):
 
     Code from Daniel Folkes: https://github.com/danfolkes/Magnet2Torrent
     '''
-    
+
     global logger
 
     tempdir = tempfile.mkdtemp()
@@ -160,7 +159,7 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
 
     readconfig()
-    
+
     if debug == True:
         logger.setLevel(logging.DEBUG)
         logger.debug('Starting in debug mode...')
