@@ -50,7 +50,7 @@ def readconfig():
         sys.exit(1)
     else:
         with open(config_file, 'r') as f:
-            config = yaml.load(f)
+            config = yaml.safe_load(f)
 
         try:
             config['feed_url']
