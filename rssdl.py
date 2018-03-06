@@ -147,18 +147,13 @@ def downloadtorrent(url, output_dir, filename):
     logging.getLogger("requests").setLevel(logging.WARNING)
 
     r = requests.get(url)
-    if r.status_code == requests.codes.ok:
-        with open(path.join(output_dir, filename), 'wb') as f:
-            f.write(r.content)
-
-        return filename
-    else:
-        logger.error(
-            'Error %s while downloading %s. Exiting...',
-            r.status_code,
-            url
-        )
+    if r.status_code != requests.codes.ok:
+        logger.error('Error %s while downloading %s. Exiting...', r.status_code, url)
         sys.exit(1)
+    with open(path.join(output_dir, filename), 'wb') as f:
+        f.write(r.content)
+
+    return filename
 
 
 if __name__ == '__main__':
