@@ -192,29 +192,20 @@ if __name__ == '__main__':
     else:
         logger.warning('File %s not found', last_file)
         last_entry = ''
-    i = 0
-    while feed.entries[i].id != last_entry:
-        if feed.entries[i].link.split(':', 1)[:1][0] == 'magnet':
-            logger.info(
-                'Downloading: %s',
-                magnet2torrent(feed.entries[i].link, torrents_dir)
-            )
-        elif re.match('^https?.*\.torrent$', feed.entries[i].link):
-            logger.info(
-                'Downloading: %s',
-                downloadtorrent(
-                    feed.entries[i].link,
-                    torrents_dir,
-                    re.sub(' ', '.', feed.entries[i].tv_raw_title) + '.torrent')
-            )
-        else:
-            logger.warning(
-                'Skipping unknown URL: %s',
-                feed.entries[i].link
-            )
-        i += 1
-        if i == len(feed.entries):
+
+    protocol_regex = re.compile('^(https?|magnet).*')
+    for entry in feed.entries:
+        if entry.id == last_entry:
             break
+        match = protocol_regex.match(entry.link)
+        if not match:
+            logger.warning('Unknown protocol, skipping URL: %s', entry.link)
+            continue
+        if match.group(1).startswith('http'):
+            torrent = downloadtorrent(entry.link, torrents_dir, re.sub(' ', '.', entry.tv_raw_title) + '.torrent')
+        else:
+            torrent = magnet2torrent(entry.link, torrents_dir)
+        logger.info('Downloading: %s', torrent)
 
     # Save last entry's ID
     if last_entry != feed.entries[0].id:
