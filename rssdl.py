@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 import feedparser
 import libtorrent as lt
 import logging
-from os import path
+import os
 import re
 import requests
 import shutil
@@ -30,49 +30,44 @@ import yaml
 feed_url = ''
 torrents_dir = ''
 debug = False
-log_file = path.join(path.expanduser('~'), 'rssdl.log')
-last_file = path.join(path.expanduser('~'), '.rssdl')
+log_file = os.path.join(os.path.expanduser('~'), 'rssdl.log')
+last_file = os.path.join(os.path.expanduser('~'), '.rssdl')
 
 
 def readconfig():
     """Read configuration file and set global variables."""
     global feed_url, torrents_dir, debug
 
-    config_file = path.join(path.dirname(path.realpath(__file__)), 'rssdl.yml')
-    if not path.isfile(config_file):
+    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rssdl.yml')
+    if not os.path.isfile(config_file):
         logger.error('Configuration file not found! (%s)', config_file)
         sys.exit(1)
-    else:
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
 
+    with open(config_file, 'r') as f:
+        config = yaml.safe_load(f)
+
+    feed_url = config.get('feed_url', '')
+    if not feed_url:
+        logger.error('feed_url is empty or not set in configuration file.')
+        sys.exit(1)
+
+    torrents_dir = os.path.expanduser(config.get('torrents_dir', ''))
+    if not torrents_dir:
+        logger.error('torrents_dir is empty or not set in configuration file.')
+        sys.exit(1)
+    if not os.path.exists(torrents_dir):
         try:
-            config['feed_url']
-        except KeyError:
-            logger.error('feed_url is not set in configuration file.')
+            os.mkdir(torrents_dir)
+        except PermissionError:
+            logger.error('Torrents directory does not exist (%s).', torrents_dir)
             sys.exit(1)
-        else:
-            feed_url = config['feed_url']
+    elif not os.path.isdir(torrents_dir):
+        logger.error('Torrents directory (%s) is not a directory.', torrents_dir)
+        sys.exit(1)
 
-        try:
-            config['torrents_dir']
-        except KeyError:
-            logger.error('torrents_dir is not set in configuration file.')
-            sys.exit(1)
-        else:
-            if not path.isdir(config['torrents_dir']):
-                logger.error('%s is not a directory.', config['torrents_dir'])
-                sys.exit(1)
-            else:
-                if config['torrents_dir'][:1] == '~':
-                    torrents_dir = path.join(
-                        path.expanduser('~'),
-                        re.sub('^/', '', config['torrents_dir'][2:])
-                    )
-                else:
-                    torrents_dir = config['torrents_dir']
-
-        debug = config.get('debug', False)
+    debug = config.get('debug', False)
+    if not isinstance(debug, bool):
+        debug = False
 
 
 def magnet2torrent(magnet, output_dir):
@@ -118,7 +113,7 @@ def magnet2torrent(magnet, output_dir):
     torfile = lt.create_torrent(torinfo)
 
     filename = torinfo.name() + ".torrent"
-    output = path.join(output_dir, filename)
+    output = os.path.join(output_dir, filename)
     with open(output, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
     logger.debug('Saved! Cleaning up dir: %s', tempdir)
@@ -150,7 +145,7 @@ def downloadtorrent(url, output_dir, filename):
     if r.status_code != requests.codes.ok:
         logger.error('Error %s while downloading %s. Exiting...', r.status_code, url)
         sys.exit(1)
-    with open(path.join(output_dir, filename), 'wb') as f:
+    with open(os.path.join(output_dir, filename), 'wb') as f:
         f.write(r.content)
 
     return filename
@@ -186,7 +181,7 @@ if __name__ == '__main__':
         )
         sys.exit(1)
 
-    if path.isfile(last_file):
+    if os.path.isfile(last_file):
         with open(last_file, 'r') as f:
             last_entry = f.read().strip('\n')
     else:
