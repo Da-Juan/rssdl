@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
+import configargparse
 import feedparser
 import libtorrent as lt
 import logging
@@ -25,49 +26,30 @@ import shutil
 import sys
 import tempfile
 from time import sleep
-import yaml
 
-feed_url = ''
-torrents_dir = ''
-debug = False
-log_file = os.path.join(os.path.expanduser('~'), 'rssdl.log')
-last_file = os.path.join(os.path.expanduser('~'), '.rssdl')
+CONFIG_FILE = os.path.join(os.path.expanduser('~'), 'rssdl.conf')
+LOG_FILE = os.path.join(os.path.expanduser('~'), 'rssdl.log')
+LAST_FILE = os.path.join(os.path.expanduser('~'), '.rssdl')
 
 
-def readconfig():
-    """Read configuration file and set global variables."""
-    global feed_url, torrents_dir, debug
+class FullPaths(configargparse.Action):
+    """Expand user- and relative-paths."""
 
-    config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rssdl.yml')
-    if not os.path.isfile(config_file):
-        logger.error('Configuration file not found! (%s)', config_file)
-        sys.exit(1)
+    def __call__(self, parser, namespace, values, option_string=None):
+        """Expand user- and relative-paths."""
+        setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
 
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
 
-    feed_url = config.get('feed_url', '')
-    if not feed_url:
-        logger.error('feed_url is empty or not set in configuration file.')
-        sys.exit(1)
-
-    torrents_dir = os.path.expanduser(config.get('torrents_dir', ''))
-    if not torrents_dir:
-        logger.error('torrents_dir is empty or not set in configuration file.')
-        sys.exit(1)
-    if not os.path.exists(torrents_dir):
-        try:
-            os.mkdir(torrents_dir)
-        except PermissionError:
-            logger.error('Torrents directory does not exist (%s).', torrents_dir)
-            sys.exit(1)
-    elif not os.path.isdir(torrents_dir):
-        logger.error('Torrents directory (%s) is not a directory.', torrents_dir)
-        sys.exit(1)
-
-    debug = config.get('debug', False)
-    if not isinstance(debug, bool):
-        debug = False
+def is_writable_dir(dirname):
+    """Check if a path is a writable directory."""
+    if not os.path.isdir(dirname):
+        msg = "{0} is not a directory".format(dirname)
+        raise configargparse.ArgumentTypeError(msg)
+    if not os.access(dirname, os.W_OK):
+        msg = "{0} is not writable".format(dirname)
+        raise configargparse.ArgumentTypeError(msg)
+    else:
+        return dirname
 
 
 def magnet2torrent(magnet, output_dir):
@@ -156,7 +138,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
 
     logfileFormatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
-    logfileHandler = logging.FileHandler(log_file)
+    logfileHandler = logging.FileHandler(LOG_FILE)
     logfileHandler.setFormatter(logfileFormatter)
     logger.addHandler(logfileHandler)
 
@@ -166,13 +148,19 @@ if __name__ == '__main__':
         logconsoleHandler.setFormatter(logconsoleFormatter)
         logger.addHandler(logconsoleHandler)
 
-    readconfig()
+    parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
+    parser.add_argument('-c', '--config-file', is_config_file=True, help='Config file path.')
+    parser.add_argument('-t', '--torrents-dir', action=FullPaths, required=True,
+                        type=is_writable_dir, help='Path to write Torrents files.')
+    parser.add_argument('-f', '--feed-url', required=True, help='URL to your personal showRSS feed.')
+    parser.add_argument('-d', '--debug', action='store_true', help='Run in debug mode.')
+    options = parser.parse_args()
 
-    if debug:
+    if options.debug:
         logger.setLevel(logging.DEBUG)
         logger.debug('Starting in debug mode...')
 
-    feed = feedparser.parse(feed_url)
+    feed = feedparser.parse(options.feed_url)
     if feed.bozo == 1:
         logger.error(
             'Error parsing RSS feed: %s at line %s',
@@ -181,11 +169,11 @@ if __name__ == '__main__':
         )
         sys.exit(1)
 
-    if os.path.isfile(last_file):
-        with open(last_file, 'r') as f:
+    if os.path.isfile(LAST_FILE):
+        with open(LAST_FILE, 'r') as f:
             last_entry = f.read().strip('\n')
     else:
-        logger.warning('File %s not found', last_file)
+        logger.warning('File %s not found', LAST_FILE)
         last_entry = ''
 
     protocol_regex = re.compile('^(https?|magnet).*')
@@ -197,14 +185,18 @@ if __name__ == '__main__':
             logger.warning('Unknown protocol, skipping URL: %s', entry.link)
             continue
         if match.group(1).startswith('http'):
-            torrent = downloadtorrent(entry.link, torrents_dir, re.sub(' ', '.', entry.tv_raw_title) + '.torrent')
+            torrent = downloadtorrent(
+                entry.link,
+                options.torrents_dir,
+                entry.tv_raw_title.replace(" ", ".") + ".torrent"
+            )
         else:
-            torrent = magnet2torrent(entry.link, torrents_dir)
+            torrent = magnet2torrent(entry.link, options.torrents_dir)
         logger.info('Downloading: %s', torrent)
 
     # Save last entry's ID
     if last_entry != feed.entries[0].id:
-        with open(last_file, 'w') as f:
+        with open(LAST_FILE, 'w') as f:
             f.write('{0}\n'.format(feed.entries[0].id))
         logger.debug('New last_entry ID: %s', feed.entries[0].id)
     sys.exit(0)
