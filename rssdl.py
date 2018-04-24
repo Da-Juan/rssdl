@@ -27,9 +27,9 @@ import sys
 import tempfile
 from time import sleep
 
-CONFIG_FILE = os.path.join(os.path.expanduser('~'), 'rssdl.conf')
-LOG_FILE = os.path.join(os.path.expanduser('~'), 'rssdl.log')
-LAST_FILE = os.path.join(os.path.expanduser('~'), '.rssdl')
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.conf")
+LOG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.log")
+LAST_FILE = os.path.join(os.path.expanduser("~"), ".rssdl")
 
 
 class FullPaths(configargparse.Action):
@@ -71,11 +71,11 @@ def magnet2torrent(magnet, output_dir):
     tempdir = tempfile.mkdtemp()
     session = lt.session()
     params = {
-        'save_path': tempdir,
-        'storage_mode': lt.storage_mode_t(2),
-        'paused': False,
-        'auto_managed': True,
-        'duplicate_is_error': True
+        "save_path": tempdir,
+        "storage_mode": lt.storage_mode_t(2),
+        "paused": False,
+        "auto_managed": True,
+        "duplicate_is_error": True
     }
     handle = lt.add_magnet_uri(session, magnet, params)
 
@@ -84,9 +84,9 @@ def magnet2torrent(magnet, output_dir):
         try:
             sleep(1)
         except KeyboardInterrupt:
-            logger.debug('Aborting...')
+            logger.debug("Aborting...")
             session.pause()
-            logger.debug('Cleanup dir %s', tempdir)
+            logger.debug("Cleanup dir %s", tempdir)
             shutil.rmtree(tempdir)
             sys.exit(0)
     session.pause()
@@ -98,7 +98,7 @@ def magnet2torrent(magnet, output_dir):
     output = os.path.join(output_dir, filename)
     with open(output, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
-    logger.debug('Saved! Cleaning up dir: %s', tempdir)
+    logger.debug("Saved! Cleaning up dir: %s", tempdir)
     session.remove_torrent(handle)
     shutil.rmtree(tempdir)
 
@@ -125,66 +125,66 @@ def downloadtorrent(url, output_dir, filename):
 
     r = requests.get(url)
     if r.status_code != requests.codes.ok:
-        logger.error('Error %s while downloading %s. Exiting...', r.status_code, url)
+        logger.error("Error %s while downloading %s. Exiting...", r.status_code, url)
         sys.exit(1)
-    with open(os.path.join(output_dir, filename), 'wb') as f:
+    with open(os.path.join(output_dir, filename), "wb") as f:
         f.write(r.content)
 
     return filename
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    logfileFormatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
+    logfileFormatter = logging.Formatter("%(asctime)s - %(levelname)s - %(module)s - %(message)s")
     logfileHandler = logging.FileHandler(LOG_FILE)
     logfileHandler.setFormatter(logfileFormatter)
     logger.addHandler(logfileHandler)
 
     if sys.stdout.isatty():
-        logconsoleFormatter = logging.Formatter('%(levelname)s: %(message)s')
+        logconsoleFormatter = logging.Formatter("%(levelname)s: %(message)s")
         logconsoleHandler = logging.StreamHandler()
         logconsoleHandler.setFormatter(logconsoleFormatter)
         logger.addHandler(logconsoleHandler)
 
     parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
-    parser.add_argument('-c', '--config-file', is_config_file=True, help='Config file path.')
-    parser.add_argument('-t', '--torrents-dir', action=FullPaths, required=True,
-                        type=is_writable_dir, help='Path to write Torrents files.')
-    parser.add_argument('-f', '--feed-url', required=True, help='URL to your personal showRSS feed.')
-    parser.add_argument('-d', '--debug', action='store_true', help='Run in debug mode.')
+    parser.add_argument("-c", "--config-file", is_config_file=True, help="Config file path.")
+    parser.add_argument("-t", "--torrents-dir", action=FullPaths, required=True,
+                        type=is_writable_dir, help="Path to write Torrents files.")
+    parser.add_argument("-f", "--feed-url", required=True, help="URL to your personal showRSS feed.")
+    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
     options = parser.parse_args()
 
     if options.debug:
         logger.setLevel(logging.DEBUG)
-        logger.debug('Starting in debug mode...')
+        logger.debug("Starting in debug mode...")
 
     feed = feedparser.parse(options.feed_url)
     if feed.bozo == 1:
         logger.error(
-            'Error parsing RSS feed: %s at line %s',
+            "Error parsing RSS feed: %s at line %s",
             feed.bozo_exception.getMessage(),
             feed.bozo_exception.getLineNumber()
         )
         sys.exit(1)
 
     if os.path.isfile(LAST_FILE):
-        with open(LAST_FILE, 'r') as f:
-            last_entry = f.read().strip('\n')
+        with open(LAST_FILE, "r") as f:
+            last_entry = f.read().strip("\n")
     else:
-        logger.warning('File %s not found', LAST_FILE)
-        last_entry = ''
+        logger.warning("File %s not found", LAST_FILE)
+        last_entry = ""
 
-    protocol_regex = re.compile('^(https?|magnet).*')
+    protocol_regex = re.compile("^(https?|magnet).*")
     for entry in feed.entries:
         if entry.id == last_entry:
             break
         match = protocol_regex.match(entry.link)
         if not match:
-            logger.warning('Unknown protocol, skipping URL: %s', entry.link)
+            logger.warning("Unknown protocol, skipping URL: %s", entry.link)
             continue
-        if match.group(1).startswith('http'):
+        if match.group(1).startswith("http"):
             torrent = downloadtorrent(
                 entry.link,
                 options.torrents_dir,
@@ -192,11 +192,11 @@ if __name__ == '__main__':
             )
         else:
             torrent = magnet2torrent(entry.link, options.torrents_dir)
-        logger.info('Downloading: %s', torrent)
+        logger.info("Downloading: %s", torrent)
 
     # Save last entry's ID
     if last_entry != feed.entries[0].id:
-        with open(LAST_FILE, 'w') as f:
-            f.write('{0}\n'.format(feed.entries[0].id))
-        logger.debug('New last_entry ID: %s', feed.entries[0].id)
+        with open(LAST_FILE, "w") as f:
+            f.write("{0}\n".format(feed.entries[0].id))
+        logger.debug("New last_entry ID: %s", feed.entries[0].id)
     sys.exit(0)
