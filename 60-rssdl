@@ -1,36 +1,46 @@
 #!/bin/bash
+# shellcheck disable=SC1117
 
 FINISHED_DIR=""
-EXCLUSIONS=""
+# Sub-directories to exclude
+EXCLUSIONS=()
 
-LAST_LOGIN_TIME=$(last --time-format iso $USER | grep -v still | head -1 | awk '{print $6}')
-if [ -z $LAST_LOGIN_TIME ]; then
-	LAST_LOGIN_TIME=$(last -f /var/log/wtmp.1 --time-format iso $USER | grep -v still | head -1 | awk '{print $6}')
+ORANGE="\e[1;38;5;166m"
+GREEN="\e[1;38;5;40m"
+BLUE="\e[1;38;5;38m"
+FONT_RESET="\e[0m"
+
+LAST_LOGIN_TIME=$(last --time-format iso "$USER" | grep -v still | head -1 | awk '{print $6}')
+if [ -z "$LAST_LOGIN_TIME" ]; then
+	LAST_LOGIN_TIME=$(last -f /var/log/wtmp.1 --time-format iso "$USER" | grep -v still | head -1 | awk '{print $6}')
 fi
+
 OLD_IFS=$IFS
 
-TIMEZONE=$(date +%z)
-
 [ -L $FINISHED_DIR ] && DIR=$FINISHED_DIR"/" || DIR=$FINISHED_DIR
-FILES=""
 
-EXCLUDE=''
+EXCLUDE=()
 IFS=' '
-for i in ${EXCLUSIONS}; do
-	EXCLUDE="${EXCLUDE} -not -path ${FINISHED_DIR}/${i}"
+for EXCLUSION in "${EXCLUSIONS[@]}"; do
+	EXCLUDE+=( "-not" "-path" "${FINISHED_DIR}/${EXCLUSION}" )
 done
 
-FIND="find $DIR -maxdepth 1 $EXCLUDE -newerct $LAST_LOGIN_TIME -printf '%TY-%Tm-%Td %TH:%TM -> \\\e[1;38;5;38m%f\\\e[0m\n'"
-IFS=$'\n'
-for file in $(eval $FIND | grep -v ${FINISHED_DIR##*/}); do
-	FILES=$FILES$file"\n"
-done
+FILES=()
+while IFS= read -r -d '' FILE; do
+	if echo "$FILE" | grep -q "+$(basename "$FINISHED_DIR")$"; then
+		continue
+	fi
+	FILES+=( "$FILE" )
+done < <(find $DIR -maxdepth 1 "${EXCLUDE[@]}" -newerct "$LAST_LOGIN_TIME" -printf '%T@+%f\0')
 
-if [[ $FILES != "" ]]; then
-	echo -e "\e[1;38;5;40mNew downloads since last login:\e[0m\n"
-	echo -e $FILES
+if [[ ${#FILES} == 0 ]]; then
+	echo -e "${ORANGE}No new downloads since last login.${FONT_RESET}\n"
 else
-	echo -e "\e[1;38;5;166mNo new downloads since last login.\n\e[0m"
+	echo -e "${GREEN}New downloads since last login:${FONT_RESET}\n"
+	for FILE in "${FILES[@]}"; do
+		read -r d f <<<"$(echo "$FILE" | sed -r 's/([0-9.]+)\+(.*)/\1 \2/')"
+		echo -e "$(date -d "@$d" "+%Y-%m-%d %H:%M") -> ${BLUE}${f}${FONT_RESET}"
+	done
 fi
 
-IFS=$OLDIFS
+IFS=$OLD_IFS
