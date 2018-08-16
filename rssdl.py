@@ -1,108 +1,81 @@
 #!/usr/bin/env python3
-'''
-    RSSdl Automatic torrent downloader for http://showrss.info/ RSS feed
-    Copyright (C) 2016 Nicolas Rouanet 
+"""
+RSSdl Automatic torrent downloader for http://showrss.info/ RSS feed.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>
-'''
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+"""
+import configargparse
 import feedparser
 import libtorrent as lt
 import logging
-from os import path
+import os
 import re
 import requests
 import shutil
 import sys
 import tempfile
 from time import sleep
-import yaml
 
-feed_url = ''
-torrents_dir = ''
-debug = False
-log_file = path.join(path.expanduser('~'), 'rssdl.log')
-last_file = path.join(path.expanduser('~'), '.rssdl')
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.conf")
+LOG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.log")
+LAST_FILE = os.path.join(os.path.expanduser("~"), ".rssdl")
 
-def is_true(string):
-    if re.match('[Tt]rue', string):
-        return True
-    elif re.match('[Ff]alse', string):
-        return False
+
+class FullPaths(configargparse.Action):
+    """Expand user- and relative-paths."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        """Expand user- and relative-paths."""
+        setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
+
+
+def is_writable_dir(dirname):
+    """Check if a path is a writable directory."""
+    if not os.path.isdir(dirname):
+        msg = "{0} is not a directory".format(dirname)
+        raise configargparse.ArgumentTypeError(msg)
+    if not os.access(dirname, os.W_OK):
+        msg = "{0} is not writable".format(dirname)
+        raise configargparse.ArgumentTypeError(msg)
     else:
-        return None
+        return dirname
 
-def readconfig():
-    global feed_url, torrents_dir, debug
-
-    config_file = path.join(path.dirname(path.realpath(__file__)), 'rssdl.yml')
-    if not path.isfile(config_file):
-        print('ERROR: configuration file not found! ({0})'.format(config_file))
-        sys.exit(1)
-    else:
-        with open(config_file, 'r') as f:
-            config = yaml.load(f)
-
-        try:
-            config['feed_url']
-        except KeyError:
-            print('ERROR: feed_url is not set in configuration file.')
-            sys.exit(1)
-        else:
-            feed_url = config['feed_url']
-
-        try:
-            config['torrents_dir']
-        except KeyError:
-            print('ERROR: torrents_dir is not set in configuration file.')
-            sys.exit(1)
-        else:
-            if not path.isdir(config['torrents_dir']):
-                print('ERROR: {0} is not a '
-                        'directory.'.format(config['torrents_dir']))
-                sys.exit(1)
-            else:
-                if config['torrents_dir'][:1] == '~':
-                    torrents_dir = path.join(path.expanduser('~'), re.sub('^/',
-                        '', config['torrents_dir'][2:]))
-                else:
-                    torrents_dir = config['torrents_dir']
-
-        try:
-            config['debug']
-        except KeyError:
-            pass
-        else:
-            debug = is_true(str(config['debug']))
 
 def magnet2torrent(magnet, output_dir):
-    '''
-    Convert magnet link to torrent file and write it in output_dir
-    Return the torrent filename
+    """
+    Convert magnet link to Torrent file.
 
     Code from Daniel Folkes: https://github.com/danfolkes/Magnet2Torrent
-    '''
-    
+
+    Args:
+        magnet(str): The magnet link.
+        output_dir(str): The path to write the Torrent file.
+
+    Returns:
+        str: The downloaded Torrent's filename.
+
+    """
     global logger
 
     tempdir = tempfile.mkdtemp()
     session = lt.session()
     params = {
-        'save_path': tempdir,
-        'storage_mode': lt.storage_mode_t(2),
-        'paused': False,
-        'auto_managed': True,
-        'duplicate_is_error': True
+        "save_path": tempdir,
+        "storage_mode": lt.storage_mode_t(2),
+        "paused": False,
+        "auto_managed": True,
+        "duplicate_is_error": True
     }
     handle = lt.add_magnet_uri(session, magnet, params)
 
@@ -111,9 +84,9 @@ def magnet2torrent(magnet, output_dir):
         try:
             sleep(1)
         except KeyboardInterrupt:
-            print("Aborting...")
+            logger.debug("Aborting...")
             session.pause()
-            print("Cleanup dir " + tempdir)
+            logger.debug("Cleanup dir %s", tempdir)
             shutil.rmtree(tempdir)
             sys.exit(0)
     session.pause()
@@ -122,84 +95,108 @@ def magnet2torrent(magnet, output_dir):
     torfile = lt.create_torrent(torinfo)
 
     filename = torinfo.name() + ".torrent"
-    output = path.join(output_dir, filename)
-    torcontent = lt.bencode(torfile.generate())
+    output = os.path.join(output_dir, filename)
     with open(output, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
-    logger.debug("Saved! Cleaning up dir: " + tempdir)
+    logger.debug("Saved! Cleaning up dir: %s", tempdir)
     session.remove_torrent(handle)
     shutil.rmtree(tempdir)
 
     return filename
 
-def downloadtorrent(url, output_dir, filename):
-    '''
-    Download torrent file and save it in output_dir
-    Return the torrent filename
-    '''
 
+def downloadtorrent(url, output_dir, filename):
+    """
+    Download Torrent file.
+
+    Args:
+        url(str): The Torrent's URL.
+        output_dir(str): The path to write the Torrent file.
+        filename(str): The Torrent's filename.
+
+    Returns:
+        str: The downloaded Torrent's filename.
+
+    """
     global logger
 
     # Set requests log level to WARNING
     logging.getLogger("requests").setLevel(logging.WARNING)
 
     r = requests.get(url)
-    if r.status_code == requests.codes.ok:
-        with open(path.join(output_dir, filename), 'wb') as f:
-            f.write(r.content)
-
-        return filename
-    else:
-        logger.error('Error {0} while downloading file {1}'
-                'Exiting...'.format(r.status_code, url))
+    if r.status_code != requests.codes.ok:
+        logger.error("Error %s while downloading %s. Exiting...", r.status_code, url)
         sys.exit(1)
+    with open(os.path.join(output_dir, filename), "wb") as f:
+        f.write(r.content)
 
-if __name__ == '__main__':
-    logging.basicConfig(filename = log_file, format = '%(asctime)s - '
-            '%(levelname)s - %(module)s - %(message)s', level = logging.INFO)
+    return filename
+
+
+if __name__ == "__main__":
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
-    readconfig()
-    
-    if debug == True:
+    logfileFormatter = logging.Formatter("%(asctime)s - %(levelname)s - %(module)s - %(message)s")
+    logfileHandler = logging.FileHandler(LOG_FILE)
+    logfileHandler.setFormatter(logfileFormatter)
+    logger.addHandler(logfileHandler)
+
+    if sys.stdout.isatty():
+        logconsoleFormatter = logging.Formatter("%(levelname)s: %(message)s")
+        logconsoleHandler = logging.StreamHandler()
+        logconsoleHandler.setFormatter(logconsoleFormatter)
+        logger.addHandler(logconsoleHandler)
+
+    parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
+    parser.add_argument("-c", "--config-file", is_config_file=True, help="Config file path.")
+    parser.add_argument("-t", "--torrents-dir", action=FullPaths, required=True,
+                        type=is_writable_dir, help="Path to write Torrents files.")
+    parser.add_argument("-f", "--feed-url", required=True, help="URL to your personal showRSS feed.")
+    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
+    options = parser.parse_args()
+
+    if options.debug:
         logger.setLevel(logging.DEBUG)
-        logger.debug('Starting in debug mode...')
+        logger.debug("Starting in debug mode...")
 
-
-    feed = feedparser.parse(feed_url)
+    feed = feedparser.parse(options.feed_url)
     if feed.bozo == 1:
-        logger.error('Error parsing RSS feed: {0} at line '
-                '{1}'.format(feed.bozo_exception.getMessage(),
-                    feed.bozo_exception.getLineNumber()))
+        logger.error(
+            "Error parsing RSS feed: %s at line %s",
+            feed.bozo_exception.getMessage(),
+            feed.bozo_exception.getLineNumber()
+        )
         sys.exit(1)
 
-    if path.isfile(last_file):
-        with open(last_file, 'r') as f:
-            last_entry = f.read().strip('\n')
+    if os.path.isfile(LAST_FILE):
+        with open(LAST_FILE, "r") as f:
+            last_entry = f.read().strip("\n")
     else:
-        logger.warning('File {0} not found'.format(last_file))
-        last_entry = ''
-    i = 0
-    while feed.entries[i].id != last_entry:
-        if feed.entries[i].link.split(':',1)[:1][0] == 'magnet':
-            logger.info('Downloading: '
-                    '{0}'.format(magnet2torrent(feed.entries[i].link,
-                        torrents_dir)))
-        elif re.match('^https?.*\.torrent$', feed.entries[i].link):
-            logger.info('Downloading: '
-                    '{0}'.format(downloadtorrent(feed.entries[i].link,
-                        torrents_dir, re.sub(' ', '.',
-                            feed.entries[i].tv_raw_title) + '.torrent')))
-        else:
-            logger.warning('Skipping unknown URL: '
-                    '{0}'.format(feed.entries[i].link))
-        i += 1
-        if i == len(feed.entries):
+        logger.warning("File %s not found", LAST_FILE)
+        last_entry = ""
+
+    protocol_regex = re.compile("^(https?|magnet).*")
+    for entry in feed.entries:
+        if entry.id == last_entry:
             break
+        match = protocol_regex.match(entry.link)
+        if not match:
+            logger.warning("Unknown protocol, skipping URL: %s", entry.link)
+            continue
+        if match.group(1).startswith("http"):
+            torrent = downloadtorrent(
+                entry.link,
+                options.torrents_dir,
+                entry.tv_raw_title.replace(" ", ".") + ".torrent"
+            )
+        else:
+            torrent = magnet2torrent(entry.link, options.torrents_dir)
+        logger.info("Downloading: %s", torrent)
 
     # Save last entry's ID
     if last_entry != feed.entries[0].id:
-        with open(last_file, 'w') as f:
-            f.write('{0}\n'.format(feed.entries[0].id))
-        logger.debug('New last_entry ID: {0}'.format(feed.entries[0].id))
+        with open(LAST_FILE, "w") as f:
+            f.write("{0}\n".format(feed.entries[0].id))
+        logger.debug("New last_entry ID: %s", feed.entries[0].id)
     sys.exit(0)

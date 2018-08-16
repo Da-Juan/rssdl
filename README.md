@@ -8,18 +8,39 @@ So this code is probably far from perfect but if you want to comment it or impro
 
 ## Requirements
 RSSdl requires python3 and a few libraries:
+* ConfigArgParse
 * feedparser
 * python-libtorrent
-* PyYAML
 * requests
 
 To install these libraries on Debian/Ubuntu:
 ```
-apt-get install python3 python3-yaml python3-libtorrent python3-requests python3-feedparser
+apt-get install python3 python3-configargparse python3-libtorrent python3-requests python3-feedparser
 ```
 
 ## Usage
-Edit rssdl.yml and configure your personal feed URL and the directory where you want the torrents to be saved.
+
+```
+usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-d]
+
+Args that start with '--' (eg. -t) can also be set in a config file
+(~/rssdl.conf or specified via -c). Config file syntax allows:
+key=value, flag=true, stuff=[a,b,c] (for details, see syntax at
+https://goo.gl/R74nmi). If an arg is specified in more than one place, then
+commandline values override config file values which override defaults.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CONFIG_FILE, --config-file CONFIG_FILE
+                        Config file path.
+  -t TORRENTS_DIR, --torrents-dir TORRENTS_DIR
+                        Path to write Torrents files.
+  -f FEED_URL, --feed-url FEED_URL
+                        URL to your personal showRSS feed.
+  -d, --debug           Run in debug mode.
+```
+
+Edit rssdl.conf and configure your personal feed URL and the directory where you want the torrents to be saved.
 
 To download the torrents you can use [rtorrent](https://github.com/rakshasa/rtorrent) and configure it to watch `torrents_dir`.
 

@@ -1,4 +1,4 @@
 #!/bin/bash
-LOG_FILE="rssdl.log"
+LOG_FILE="${HOME}/rssdl.log"
 
-echo "$(date "+%Y-%m-%d %H:%M:%S,%3N") - INFO - rtorrent - Finished downloading: ${1}" >> $LOG_FILE
+echo "$(date "+%Y-%m-%d %H:%M:%S,%3N") - INFO - rtorrent - Finished downloading: ${@}" >> "$LOG_FILE"
