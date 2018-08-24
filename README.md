@@ -40,7 +40,7 @@ optional arguments:
   -d, --debug           Run in debug mode.
 ```
 
-Edit rssdl.conf and configure your personal feed URL and the directory where you want the torrents to be saved.
+Copy rssdl.conf.example to rssdl.conf and configure your personal feed URL and the directory where you want the torrents to be saved.
 
 To download the torrents you can use [rtorrent](https://github.com/rakshasa/rtorrent) and configure it to watch `torrents_dir`.
 
