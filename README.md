@@ -13,9 +13,33 @@ RSSdl requires python3 and a few libraries:
 * python-libtorrent
 * requests
 
-To install these libraries on Debian/Ubuntu:
+## Installation
+
+### Virtual environment
+
 ```
-apt-get install python3 python3-configargparse python3-libtorrent python3-requests python3-feedparser
+python3 -m virtualenv -p python3 venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Libtorrent's python bindings are not available on PyPI so we need to install them system wide and do a little hack.
+
+```
+apt install python3-libtorrent
+ln -s /usr/lib/python3/dist-packages/libtorrent*.so <path_to_virtualenv>/lib/python<version>/site-packages/
+```
+
+To run rssdl from the virtual environment without activating use:
+```
+<path_to_virtualenv>/venv/bin/python rssdl.py
+```
+
+### Simple install
+Install these packages on Debian/Ubuntu:
+
+```
+apt install python3 python3-configargparse python3-libtorrent python3-requests python3-feedparser
 ```
 
 ## Usage
