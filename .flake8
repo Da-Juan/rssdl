@@ -1,2 +1,16 @@
 [flake8]
-max-line-length = 119
+max-line-length = 80
+select = C,E,F,W,B,B950
+ignore = E501
+exclude =
+    venv*/,
+    .tox,
+    .git,
+    __pycache__,
+    docs/_build,
+    dist,
+    *.pyc,
+    *.egg-info,
+    .cache,
+    .eggs
+format = ${cyan}%(path)s${reset}:${yellow_bold}%(row)d${reset}:${green_bold}%(col)d${reset}: ${red_bold}%(code)s${reset} %(text)s
