@@ -15,17 +15,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
-import configargparse
-import feedparser
-import libtorrent as lt
+
 import logging
 import os
 import re
-import requests
 import shutil
 import sys
 import tempfile
 from time import sleep
+
+import configargparse
+
+import feedparser
+
+import libtorrent as lt
+
+import requests
 
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.conf")
 LOG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.log")
@@ -75,12 +80,12 @@ def magnet2torrent(magnet, output_dir):
         "storage_mode": lt.storage_mode_t(2),
         "paused": False,
         "auto_managed": True,
-        "duplicate_is_error": True
+        "duplicate_is_error": True,
     }
     handle = lt.add_magnet_uri(session, magnet, params)
 
     logger.debug("Downloading Metadata...")
-    while (not handle.has_metadata()):
+    while not handle.has_metadata():
         try:
             sleep(1)
         except KeyboardInterrupt:
@@ -137,7 +142,9 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    logfileFormatter = logging.Formatter("%(asctime)s - %(levelname)s - %(module)s - %(message)s")
+    logfileFormatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
+    )
     logfileHandler = logging.FileHandler(LOG_FILE)
     logfileHandler.setFormatter(logfileFormatter)
     logger.addHandler(logfileHandler)
@@ -149,10 +156,20 @@ if __name__ == "__main__":
         logger.addHandler(logconsoleHandler)
 
     parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
-    parser.add_argument("-c", "--config-file", is_config_file=True, help="Config file path.")
-    parser.add_argument("-t", "--torrents-dir", action=FullPaths, required=True,
-                        type=is_writable_dir, help="Path to write Torrents files.")
-    parser.add_argument("-f", "--feed-url", required=True, help="URL to your personal showRSS feed.")
+    parser.add_argument(
+        "-c", "--config-file", is_config_file=True, help="Config file path."
+    )
+    parser.add_argument(
+        "-t",
+        "--torrents-dir",
+        action=FullPaths,
+        required=True,
+        type=is_writable_dir,
+        help="Path to write Torrents files.",
+    )
+    parser.add_argument(
+        "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
+    )
     parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
     options = parser.parse_args()
 
@@ -165,7 +182,7 @@ if __name__ == "__main__":
         logger.error(
             "Error parsing RSS feed: %s at line %s",
             feed.bozo_exception.getMessage(),
-            feed.bozo_exception.getLineNumber()
+            feed.bozo_exception.getLineNumber(),
         )
         sys.exit(1)
 
@@ -188,7 +205,7 @@ if __name__ == "__main__":
             torrent = downloadtorrent(
                 entry.link,
                 options.torrents_dir,
-                entry.tv_raw_title.replace(" ", ".") + ".torrent"
+                entry.tv_raw_title.replace(" ", ".") + ".torrent",
             )
         else:
             torrent = magnet2torrent(entry.link, options.torrents_dir)
