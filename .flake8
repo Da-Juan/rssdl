@@ -1,6 +1,6 @@
 [flake8]
 max-line-length = 80
-select = C,E,F,W,B,B950
+select = C,D,E,F,I,W,B,B950
 ignore = E501
 exclude =
     venv*/,
