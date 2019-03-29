@@ -32,7 +32,8 @@ import libtorrent as lt
 
 import requests
 
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.conf")
+HERE = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(HERE, "rssdl.conf")
 LOG_FILE = os.path.join(os.path.expanduser("~"), "rssdl.log")
 LAST_FILE = os.path.join(os.path.expanduser("~"), ".rssdl")
 
