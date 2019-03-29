@@ -139,53 +139,15 @@ def downloadtorrent(url, output_dir, filename):
     return filename
 
 
-if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+def fetch_torrents(entries):
+    """
+    Browse feed entries and fetch new torrents.
 
-    logfileFormatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
-    )
-    logfileHandler = logging.FileHandler(LOG_FILE)
-    logfileHandler.setFormatter(logfileFormatter)
-    logger.addHandler(logfileHandler)
+    Args:
+        entries(list): The feed entries.
 
-    if sys.stdout.isatty():
-        logconsoleFormatter = logging.Formatter("%(levelname)s: %(message)s")
-        logconsoleHandler = logging.StreamHandler()
-        logconsoleHandler.setFormatter(logconsoleFormatter)
-        logger.addHandler(logconsoleHandler)
-
-    parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
-    parser.add_argument(
-        "-c", "--config-file", is_config_file=True, help="Config file path."
-    )
-    parser.add_argument(
-        "-t",
-        "--torrents-dir",
-        action=FullPaths,
-        required=True,
-        type=is_writable_dir,
-        help="Path to write Torrents files.",
-    )
-    parser.add_argument(
-        "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
-    )
-    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
-    options = parser.parse_args()
-
-    if options.debug:
-        logger.setLevel(logging.DEBUG)
-        logger.debug("Starting in debug mode...")
-
-    feed = feedparser.parse(options.feed_url)
-    if feed.bozo == 1:
-        logger.error(
-            "Error parsing RSS feed: %s at line %s",
-            feed.bozo_exception.getMessage(),
-            feed.bozo_exception.getLineNumber(),
-        )
-        sys.exit(1)
+    """
+    global logger
 
     if os.path.isfile(LAST_FILE):
         with open(LAST_FILE, "r") as f:
@@ -195,7 +157,7 @@ if __name__ == "__main__":
         last_entry = ""
 
     protocol_regex = re.compile("^(https?|magnet).*")
-    for entry in feed.entries:
+    for entry in entries:
         if entry.id == last_entry:
             break
         match = protocol_regex.match(entry.link)
@@ -213,8 +175,68 @@ if __name__ == "__main__":
         logger.info("Downloading: %s", torrent)
 
     # Save last entry's ID
-    if last_entry != feed.entries[0].id:
+    if last_entry != entries[0].id:
         with open(LAST_FILE, "w") as f:
-            f.write("{0}\n".format(feed.entries[0].id))
-        logger.debug("New last_entry ID: %s", feed.entries[0].id)
-    sys.exit(0)
+            f.write("{0}\n".format(entries[0].id))
+        logger.debug("New last_entry ID: %s", entries[0].id)
+
+
+def setup_logging():
+    """Set-up logging."""
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    logfileFormatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
+    )
+    logfileHandler = logging.FileHandler(LOG_FILE)
+    logfileHandler.setFormatter(logfileFormatter)
+    logger.addHandler(logfileHandler)
+
+    if sys.stdout.isatty():
+        logconsoleFormatter = logging.Formatter("%(levelname)s: %(message)s")
+        logconsoleHandler = logging.StreamHandler()
+        logconsoleHandler.setFormatter(logconsoleFormatter)
+        logger.addHandler(logconsoleHandler)
+    return logger
+
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = configargparse.ArgParser(default_config_files=[CONFIG_FILE])
+    parser.add_argument(
+        "-c", "--config-file", is_config_file=True, help="Config file path."
+    )
+    parser.add_argument(
+        "-t",
+        "--torrents-dir",
+        action=FullPaths,
+        required=True,
+        type=is_writable_dir,
+        help="Path to write Torrents files.",
+    )
+    parser.add_argument(
+        "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
+    )
+    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    logger = setup_logging()
+    options = parse_arguments()
+
+    if options.debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Starting in debug mode...")
+
+    feed = feedparser.parse(options.feed_url)
+    if feed.bozo == 1:
+        logger.error(
+            "Error parsing RSS feed: %s at line %s",
+            feed.bozo_exception.getMessage(),
+            feed.bozo_exception.getLineNumber(),
+        )
+        sys.exit(1)
+
+    fetch_torrents(parsed_feed.entries)
