@@ -230,13 +230,20 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
         logger.debug("Starting in debug mode...")
 
-    feed = feedparser.parse(options.feed_url)
-    if feed.bozo == 1:
-        logger.error(
-            "Error parsing RSS feed: %s at line %s",
-            feed.bozo_exception.getMessage(),
-            feed.bozo_exception.getLineNumber(),
-        )
+    feed_request = requests.get(options.feed_url, allow_redirects=True)
+    if feed_request.status_code != 200:
+        logger.error("Error downloading feed(%s)", feed_request.status_code)
+        sys.exit(1)
+    parsed_feed = feedparser.parse(feed_request.text)
+    if parsed_feed.bozo == 1:
+        try:
+            logger.error(
+                "Error parsing RSS feed: %s at line %s",
+                parsed_feed.bozo_exception.getMessage(),
+                parsed_feed.bozo_exception.getLineNumber(),
+            )
+        except AttributeError:
+            logger.error("Error parsing RSS feed")
         sys.exit(1)
 
     fetch_torrents(parsed_feed.entries)
