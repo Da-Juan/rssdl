@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
 
+import datetime
 import logging
 import os
 import re
@@ -242,6 +243,14 @@ if __name__ == "__main__":
             )
         except AttributeError:
             logger.error("Error parsing RSS feed")
+        finally:
+            debug_filename = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                datetime.datetime.now().strftime("%Y-%m-%d.%H-%M-%S.xml"),
+            )
+            with open(debug_filename, "w") as debug_file:
+                debug_file.write(feed_request.text)
+            logger.error("Debug file saved: %s", debug_filename)
         sys.exit(1)
 
     fetch_torrents(parsed_feed.entries, options.skip_seasons)
