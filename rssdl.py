@@ -240,3 +240,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     fetch_torrents(parsed_feed.entries)
+    logger.debug("Job done, bye!")
