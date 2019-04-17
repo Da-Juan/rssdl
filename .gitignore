@@ -1,2 +1,12 @@
-*.pyc
+*.py[cod]
 *.swp
+
+.env
+.venv
+env/
+venv*/
+ENV/
+
+.ropeproject
+
+rssdl.conf
