@@ -48,7 +48,7 @@ apt install python3 python3-configargparse python3-libtorrent python3-requests p
 usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-d]
 
 Args that start with '--' (eg. -t) can also be set in a config file
-(~/rssdl.conf or specified via -c). Config file syntax allows:
+(<path_to_rssdl>/rssdl.conf or specified via -c). Config file syntax allows:
 key=value, flag=true, stuff=[a,b,c] (for details, see syntax at
 https://goo.gl/R74nmi). If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
