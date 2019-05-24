@@ -45,11 +45,11 @@ apt install python3 python3-configargparse python3-libtorrent python3-requests p
 ## Usage
 
 ```
-usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-d]
+usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-s] [-d]
 
 Args that start with '--' (eg. -t) can also be set in a config file
-(<path_to_rssdl>/rssdl.conf or specified via -c). Config file syntax allows:
-key=value, flag=true, stuff=[a,b,c] (for details, see syntax at
+(/home/nrouanet/GIT/rssdl/rssdl.conf or specified via -c). Config file syntax
+allows: key=value, flag=true, stuff=[a,b,c] (for details, see syntax at
 https://goo.gl/R74nmi). If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
 
@@ -61,6 +61,7 @@ optional arguments:
                         Path to write Torrents files.
   -f FEED_URL, --feed-url FEED_URL
                         URL to your personal showRSS feed.
+  -s, --skip-seasons    Do not download full seasons.
   -d, --debug           Run in debug mode.
 ```
 

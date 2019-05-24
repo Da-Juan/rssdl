@@ -126,12 +126,13 @@ def downloadtorrent(url, output_path):
         f.write(r.content)
 
 
-def fetch_torrents(entries):
+def fetch_torrents(entries, skip_seasons=False):
     """
     Browse feed entries and fetch new torrents.
 
     Args:
         entries(list): The feed entries.
+        skip_seasons(bool): Do not download full seasons.
 
     """
     global logger
@@ -144,16 +145,21 @@ def fetch_torrents(entries):
         last_entry = ""
 
     protocol_regex = re.compile("^(https?|magnet).*")
+    season_regex = re.compile(r"^.*\.[sS][0-9]+\.(?![Ee][0-9]+).*")
     for entry in entries:
         if entry.id == last_entry:
             break
-        match = protocol_regex.match(entry.link)
-        if not match:
+        protocol_match = protocol_regex.match(entry.link)
+        if not protocol_match:
             logger.warning("Unknown protocol, skipping URL: %s", entry.link)
             continue
-        filename = entry.tv_raw_title.replace(" ", ".") + ".torrent"
+        filename = entry.title.replace(" ", ".") + ".torrent"
+        season_match = season_regex.match(filename)
+        if season_match and skip_seasons:
+            logger.debug("Skipping full season: %s", filename)
+            continue
         torrent_path = os.path.join(options.torrents_dir, filename)
-        if match.group(1).startswith("http"):
+        if protocol_match.group(1).startswith("http"):
             downloadtorrent(entry.link, torrent_path)
         else:
             magnet2torrent(entry.link, torrent_path)
@@ -203,6 +209,13 @@ def parse_arguments():
     parser.add_argument(
         "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
     )
+    parser.add_argument(
+        "-s",
+        "--skip-seasons",
+        action="store_true",
+        default=False,
+        help="Do not download full seasons.",
+    )
     parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 
@@ -231,5 +244,5 @@ if __name__ == "__main__":
             logger.error("Error parsing RSS feed")
         sys.exit(1)
 
-    fetch_torrents(parsed_feed.entries)
+    fetch_torrents(parsed_feed.entries, options.skip_seasons)
     logger.debug("Job done, bye!")
