@@ -58,7 +58,7 @@ def is_writable_dir(dirname):
         return dirname
 
 
-def magnet2torrent(magnet, output_dir):
+def magnet2torrent(magnet, output_path):
     """
     Convert magnet link to Torrent file.
 
@@ -66,10 +66,7 @@ def magnet2torrent(magnet, output_dir):
 
     Args:
         magnet(str): The magnet link.
-        output_dir(str): The path to write the Torrent file.
-
-    Returns:
-        str: The downloaded Torrent's filename.
+        output_path(str): The absolute path to write the Torrent file.
 
     """
     global logger
@@ -100,28 +97,20 @@ def magnet2torrent(magnet, output_dir):
     torinfo = handle.get_torrent_info()
     torfile = lt.create_torrent(torinfo)
 
-    filename = torinfo.name() + ".torrent"
-    output = os.path.join(output_dir, filename)
-    with open(output, "wb") as f:
+    with open(output_path, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
     logger.debug("Saved! Cleaning up dir: %s", tempdir)
     session.remove_torrent(handle)
     shutil.rmtree(tempdir)
 
-    return filename
 
-
-def downloadtorrent(url, output_dir, filename):
+def downloadtorrent(url, output_path):
     """
     Download Torrent file.
 
     Args:
         url(str): The Torrent's URL.
-        output_dir(str): The path to write the Torrent file.
-        filename(str): The Torrent's filename.
-
-    Returns:
-        str: The downloaded Torrent's filename.
+        output_path(str): The absolute path to write the Torrent file.
 
     """
     global logger
@@ -133,10 +122,8 @@ def downloadtorrent(url, output_dir, filename):
     if r.status_code != requests.codes.ok:
         logger.error("Error %s while downloading %s. Exiting...", r.status_code, url)
         sys.exit(1)
-    with open(os.path.join(output_dir, filename), "wb") as f:
+    with open(output_path, "wb") as f:
         f.write(r.content)
-
-    return filename
 
 
 def fetch_torrents(entries):
@@ -164,15 +151,13 @@ def fetch_torrents(entries):
         if not match:
             logger.warning("Unknown protocol, skipping URL: %s", entry.link)
             continue
+        filename = entry.tv_raw_title.replace(" ", ".") + ".torrent"
+        torrent_path = os.path.join(options.torrents_dir, filename)
         if match.group(1).startswith("http"):
-            torrent = downloadtorrent(
-                entry.link,
-                options.torrents_dir,
-                entry.tv_raw_title.replace(" ", ".") + ".torrent",
-            )
+            downloadtorrent(entry.link, torrent_path)
         else:
-            torrent = magnet2torrent(entry.link, options.torrents_dir)
-        logger.info("Downloading: %s", torrent)
+            magnet2torrent(entry.link, torrent_path)
+        logger.info("Downloading: %s", filename)
 
     # Save last entry's ID
     if last_entry != entries[0].id:
