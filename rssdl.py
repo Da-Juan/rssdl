@@ -58,7 +58,7 @@ def is_writable_dir(dirname):
         return dirname
 
 
-def magnet2torrent(magnet, output_dir):
+def magnet2torrent(magnet, output_path):
     """
     Convert magnet link to Torrent file.
 
@@ -66,10 +66,7 @@ def magnet2torrent(magnet, output_dir):
 
     Args:
         magnet(str): The magnet link.
-        output_dir(str): The path to write the Torrent file.
-
-    Returns:
-        str: The downloaded Torrent's filename.
+        output_path(str): The absolute path to write the Torrent file.
 
     """
     global logger
@@ -100,28 +97,20 @@ def magnet2torrent(magnet, output_dir):
     torinfo = handle.get_torrent_info()
     torfile = lt.create_torrent(torinfo)
 
-    filename = torinfo.name() + ".torrent"
-    output = os.path.join(output_dir, filename)
-    with open(output, "wb") as f:
+    with open(output_path, "wb") as f:
         f.write(lt.bencode(torfile.generate()))
     logger.debug("Saved! Cleaning up dir: %s", tempdir)
     session.remove_torrent(handle)
     shutil.rmtree(tempdir)
 
-    return filename
 
-
-def downloadtorrent(url, output_dir, filename):
+def downloadtorrent(url, output_path):
     """
     Download Torrent file.
 
     Args:
         url(str): The Torrent's URL.
-        output_dir(str): The path to write the Torrent file.
-        filename(str): The Torrent's filename.
-
-    Returns:
-        str: The downloaded Torrent's filename.
+        output_path(str): The absolute path to write the Torrent file.
 
     """
     global logger
@@ -133,18 +122,17 @@ def downloadtorrent(url, output_dir, filename):
     if r.status_code != requests.codes.ok:
         logger.error("Error %s while downloading %s. Exiting...", r.status_code, url)
         sys.exit(1)
-    with open(os.path.join(output_dir, filename), "wb") as f:
+    with open(output_path, "wb") as f:
         f.write(r.content)
 
-    return filename
 
-
-def fetch_torrents(entries):
+def fetch_torrents(entries, skip_seasons=False):
     """
     Browse feed entries and fetch new torrents.
 
     Args:
         entries(list): The feed entries.
+        skip_seasons(bool): Do not download full seasons.
 
     """
     global logger
@@ -157,22 +145,25 @@ def fetch_torrents(entries):
         last_entry = ""
 
     protocol_regex = re.compile("^(https?|magnet).*")
+    season_regex = re.compile(r"^.*\.[sS][0-9]+\.(?![Ee][0-9]+).*")
     for entry in entries:
         if entry.id == last_entry:
             break
-        match = protocol_regex.match(entry.link)
-        if not match:
+        protocol_match = protocol_regex.match(entry.link)
+        if not protocol_match:
             logger.warning("Unknown protocol, skipping URL: %s", entry.link)
             continue
-        if match.group(1).startswith("http"):
-            torrent = downloadtorrent(
-                entry.link,
-                options.torrents_dir,
-                entry.tv_raw_title.replace(" ", ".") + ".torrent",
-            )
+        filename = entry.title.replace(" ", ".") + ".torrent"
+        season_match = season_regex.match(filename)
+        if season_match and skip_seasons:
+            logger.debug("Skipping full season: %s", filename)
+            continue
+        torrent_path = os.path.join(options.torrents_dir, filename)
+        if protocol_match.group(1).startswith("http"):
+            downloadtorrent(entry.link, torrent_path)
         else:
-            torrent = magnet2torrent(entry.link, options.torrents_dir)
-        logger.info("Downloading: %s", torrent)
+            magnet2torrent(entry.link, torrent_path)
+        logger.info("Downloading: %s", filename)
 
     # Save last entry's ID
     if last_entry != entries[0].id:
@@ -182,7 +173,7 @@ def fetch_torrents(entries):
 
 
 def setup_logging():
-    """Set-up logging."""
+    """Set up logging."""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
@@ -218,6 +209,13 @@ def parse_arguments():
     parser.add_argument(
         "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
     )
+    parser.add_argument(
+        "-s",
+        "--skip-seasons",
+        action="store_true",
+        default=False,
+        help="Do not download full seasons.",
+    )
     parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
     return parser.parse_args()
 
@@ -246,5 +244,5 @@ if __name__ == "__main__":
             logger.error("Error parsing RSS feed")
         sys.exit(1)
 
-    fetch_torrents(parsed_feed.entries)
+    fetch_torrents(parsed_feed.entries, options.skip_seasons)
     logger.debug("Job done, bye!")
