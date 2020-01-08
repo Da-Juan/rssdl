@@ -1,7 +1,3 @@
-# This is an example resource file for rTorrent. Copy to
-# ~/.rtorrent.rc and enable/modify the options as needed. Remember to
-# uncomment the options you wish to enable.
-
 # Maximum and minimum number of peers to connect to per torrent.
 min_peers = 1
 max_peers = 100
@@ -37,8 +33,8 @@ schedule2 = watch_directory_2,5,5,"load.start=/home/rtorrent/Torrents/Dir2/*.tor
 
 # On completion, move the torrent to the directory from custom1 or to default directory if custom1 is not set.
 method.insert = is_custom1_set,simple,"and={d.custom1=}"
-method.insert = move_to_default_dir,simple,"d.directory.set=/home/rtorrent/Finished/;execute=mv,-u,$d.get_base_path=,/home/rtorrent/Finished/;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.get_name="
-method.insert = move_to_custom1,simple,"d.directory.set=$d.custom1=;execute=mv,-u,$d.get_base_path=,$d.custom1=;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.get_name="
+method.insert = move_to_default_dir,simple,"d.directory.set=/home/rtorrent/Finished/;execute=mv,-u,$d.base_path=,/home/rtorrent/Finished/;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.name="
+method.insert = move_to_custom1,simple,"d.directory.set=$d.custom1=;execute=mv,-u,$d.base_path=,$d.custom1=;execute=/home/rtorrent/Scripts/rssdl/rtorrentlog.sh,$d.name="
 method.set_key = event.download.finished,move_complete,"branch=is_custom1_set=,move_to_custom1=,move_to_default_dir="
 
 # Close torrents when diskspace is low.
@@ -52,13 +48,13 @@ ratio.enable=
 # Change the limits, the defaults should be sufficient.
 # Upload to a minimum ratio of 1.0
 ratio.min.set=100
-# Upload to a maximum ratio of 3.0
-ratio.max.set=300
-# Upload a minimum of 1GB
-ratio.upload.set=1G
+# Upload to a maximum ratio of 5.0
+ratio.max.set=500
+# Upload a minimum of 2GB
+ratio.upload.set=2G
 
 # When seeding ratio is reached close the torrent
-system.method.set = group.seeding.ratio.command, d.close=, d.erase=
+method.set = group.seeding.ratio.command, d.close=, d.erase=
 
 # Port range to use for listening.
 port_range = 33101-33199
@@ -76,25 +72,25 @@ port_random = yes
 encryption = allow_incoming,try_outgoing,enable_retry,prefer_plaintext
 
 # Sort the main view by ratio
-view.sort_current = main,greater=d.get_ratio=
-view.sort_new = main,less=d.get_ratio=
+view.sort_current = main,greater=d.ratio=
+view.sort_new = main,less=d.ratio=
 view.sort = main
 
 # Sort the seeding view by the upload rate and only show torrents with peers
-view.sort_current = seeding,greater=d.get_up_rate=
-view.filter = seeding,"and=d.get_complete=,d.get_peers_connected="
-view.sort_new = seeding,less=d.get_up_rate=
+view.sort_current = seeding,greater=d.up.rate=
+view.filter = seeding,"and=d.complete=,d.peers_connected="
+view.sort_new = seeding,less=d.up.rate=
 view.sort = seeding
 
 # Sort the leeching view by name
-view.sort_current = leeching,greater=d.get_name=
-view.sort_new = leeching,greater=d.get_name=
+view.sort_current = leeching,greater=d.name=
+view.sort_new = leeching,greater=d.name=
 view.sort = leeching
 
 # Filter the active view by connected peers
-view.sort_current = active,less=d.get_name=
-view.sort_new = leeching,less=d.get_name=
-view.filter = active,d.get_peers_connected=
+view.sort_current = active,less=d.name=
+view.sort_new = leeching,less=d.name=
+view.filter = active,d.peers_connected=
 view.sort = active
 
 schedule = sort_main,11,5,view.sort=main
