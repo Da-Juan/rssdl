@@ -173,7 +173,7 @@ def fetch_torrents(entries, skip_seasons=False):
 
 
 def setup_logging():
-    """Set-up logging."""
+    """Set up logging."""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
