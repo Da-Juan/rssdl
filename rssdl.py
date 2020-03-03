@@ -230,6 +230,11 @@ def parse_arguments():
         env_var="DEBUG",
         help="Run in debug mode.",
     )
+    parser.add_argument(
+        "-w",
+        "--write-config",
+        help="Write the config file, if it does not exist already.",
+    )
     return parser.parse_args()
 
 
@@ -260,4 +265,12 @@ if __name__ == "__main__":
     fetch_torrents(
         parsed_feed.entries, options["torrents_dir"], options["skip_seasons"]
     )
+
+    writable_options = ["feed_url", "torrents_dir", "skip_seasons"]
+    if options["write_config"] and not os.path.exists(options["write_config"]):
+        logger.debug("Saving configuration file(%s)", options["write_config"])
+        with open(options["write_config"], "w") as f:
+            for o in writable_options:
+                f.write(f"{o.replace('_', '-')} = {options[o]}\n")
+
     logger.debug("Job done, bye!")
