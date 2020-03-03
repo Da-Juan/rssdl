@@ -173,20 +173,32 @@ def fetch_torrents(entries, torrents_dir, skip_seasons=False):
         logger.debug("New last_entry ID: %s", entries[0].id)
 
 
+def is_docker():
+    """Check if script is running in Docker."""
+    path = "/proc/self/cgroup"
+    return (
+        os.path.exists("/.dockerenv")
+        or os.path.isfile(path)
+        and any("docker" in line for line in open(path))
+    )
+
+
 def setup_logging():
     """Set up logging."""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    file_log_format = "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
+    console_log_format = "%(levelname)s: %(message)s"
 
-    logfileFormatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
-    )
+    logfileFormatter = logging.Formatter(file_log_format)
     logfileHandler = logging.FileHandler(LOG_FILE)
     logfileHandler.setFormatter(logfileFormatter)
     logger.addHandler(logfileHandler)
 
-    if sys.stdout.isatty():
-        logconsoleFormatter = logging.Formatter("%(levelname)s: %(message)s")
+    if sys.stdout.isatty() or is_docker:
+        logconsoleFormatter = logging.Formatter(
+            console_log_format if not is_docker else file_log_format
+        )
         logconsoleHandler = logging.StreamHandler()
         logconsoleHandler.setFormatter(logconsoleFormatter)
         logger.addHandler(logconsoleHandler)
@@ -242,9 +254,12 @@ if __name__ == "__main__":
     logger = setup_logging()
     options = vars(parse_arguments())
 
+    start_msg = "Starting..."
     if options["debug"]:
         logger.setLevel(logging.DEBUG)
-        logger.debug("Starting in debug mode...")
+        logger.debug(start_msg)
+    if is_docker() and not options["debug"]:
+        logger.info(start_msg)
 
     feed_request = requests.get(options["feed_url"], allow_redirects=True)
     if feed_request.status_code != 200:
@@ -273,4 +288,7 @@ if __name__ == "__main__":
             for o in writable_options:
                 f.write(f"{o.replace('_', '-')} = {options[o]}\n")
 
-    logger.debug("Job done, bye!")
+    end_msg = "Job done, bye!"
+    logger.debug(end_msg)
+    if is_docker() and not options["debug"]:
+        logger.info(end_msg)
