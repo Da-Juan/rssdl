@@ -126,12 +126,13 @@ def downloadtorrent(url, output_path):
         f.write(r.content)
 
 
-def fetch_torrents(entries, skip_seasons=False):
+def fetch_torrents(entries, torrents_dir, skip_seasons=False):
     """
     Browse feed entries and fetch new torrents.
 
     Args:
         entries(list): The feed entries.
+        torrents_dir(str): The path to write Torrents files.
         skip_seasons(bool): Do not download full seasons.
 
     """
@@ -158,7 +159,7 @@ def fetch_torrents(entries, skip_seasons=False):
         if season_match and skip_seasons:
             logger.debug("Skipping full season: %s", filename)
             continue
-        torrent_path = os.path.join(options.torrents_dir, filename)
+        torrent_path = os.path.join(torrents_dir, filename)
         if protocol_match.group(1).startswith("http"):
             downloadtorrent(entry.link, torrent_path)
         else:
@@ -222,13 +223,13 @@ def parse_arguments():
 
 if __name__ == "__main__":
     logger = setup_logging()
-    options = parse_arguments()
+    options = vars(parse_arguments())
 
-    if options.debug:
+    if options["debug"]:
         logger.setLevel(logging.DEBUG)
         logger.debug("Starting in debug mode...")
 
-    feed_request = requests.get(options.feed_url, allow_redirects=True)
+    feed_request = requests.get(options["feed_url"], allow_redirects=True)
     if feed_request.status_code != 200:
         logger.error("Error downloading feed(%s)", feed_request.status_code)
         sys.exit(1)
@@ -244,5 +245,7 @@ if __name__ == "__main__":
             logger.error("Error parsing RSS feed")
         sys.exit(1)
 
-    fetch_torrents(parsed_feed.entries, options.skip_seasons)
+    fetch_torrents(
+        parsed_feed.entries, options["torrents_dir"], options["skip_seasons"]
+    )
     logger.debug("Job done, bye!")
