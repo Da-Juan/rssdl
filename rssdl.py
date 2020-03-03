@@ -205,19 +205,31 @@ def parse_arguments():
         action=FullPaths,
         required=True,
         type=is_writable_dir,
+        env_var="TORRENTS_DIR",
         help="Path to write Torrents files.",
     )
     parser.add_argument(
-        "-f", "--feed-url", required=True, help="URL to your personal showRSS feed."
+        "-f",
+        "--feed-url",
+        required=True,
+        env_var="FEED_URL",
+        help="URL to your personal showRSS feed.",
     )
     parser.add_argument(
         "-s",
         "--skip-seasons",
         action="store_true",
         default=False,
+        env_var="SKIP_SEASONS",
         help="Do not download full seasons.",
     )
-    parser.add_argument("-d", "--debug", action="store_true", help="Run in debug mode.")
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        env_var="DEBUG",
+        help="Run in debug mode.",
+    )
     return parser.parse_args()
 
 
