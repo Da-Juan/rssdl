@@ -6,6 +6,35 @@ I'm not a developer, I've written this program to learn about python and for the
 
 So this code is probably far from perfect but if you want to comment it or improve it, feel free to do it and please explain me how and why :)
 
+## Running in Docker
+
+The easier way to setup RSSdl is to run it as a Docker container.
+
+Create and run your container using the following command:
+
+```
+docker volume create rssdl_root
+docker run -d --rm --name rssdl --mount 'type=volume,src=rssdl_root,dst=/root' --mount 'type=bind,src=<TORRENTS_DIR>,dst=/Torrents' --env FEED_URL="<FEED_URL>" nrouanet/rssdl
+```
+
+Then you can periodically run RSSdl using:
+
+```
+docker run -d --rm --name rssdl --mount 'type=volume,src=rssdl_root,dst=/root' --mount 'type=bind,src=<TORRENTS_DIR>,dst=/Torrents'  nrouanet/rssdl
+```
+
+You can check the logs using:
+
+```
+docker logs rssdl
+```
+
+To upgrade run:
+
+```
+docker pull nrouanet/rssdl:latest
+```
+
 ## Requirements
 RSSdl requires python3 and a few libraries:
 * ConfigArgParse
@@ -45,24 +74,27 @@ apt install python3 python3-configargparse python3-libtorrent python3-requests p
 ## Usage
 
 ```
-usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-s] [-d]
+usage: rssdl.py [-h] [-c CONFIG_FILE] -t TORRENTS_DIR -f FEED_URL [-s] [-d] [-w WRITE_CONFIG]
 
 Args that start with '--' (eg. -t) can also be set in a config file
 (<path_to_rssdl>/rssdl.conf or specified via -c). Config file syntax allows:
 key=value, flag=true, stuff=[a,b,c] (for details, see syntax at
 https://goo.gl/R74nmi). If an arg is specified in more than one place, then
-commandline values override config file values which override defaults.
+commandline values override environment variables which override config file
+values which override defaults.
 
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config-file CONFIG_FILE
                         Config file path.
   -t TORRENTS_DIR, --torrents-dir TORRENTS_DIR
-                        Path to write Torrents files.
+                        Path to write Torrents files. [env var: TORRENTS_DIR]
   -f FEED_URL, --feed-url FEED_URL
-                        URL to your personal showRSS feed.
-  -s, --skip-seasons    Do not download full seasons.
-  -d, --debug           Run in debug mode.
+                        URL to your personal showRSS feed. [env var: FEED_URL]
+  -s, --skip-seasons    Do not download full seasons. [env var: SKIP_SEASONS]
+  -d, --debug           Run in debug mode. [env var: DEBUG]
+  -w WRITE_CONFIG, --write-config WRITE_CONFIG
+                        Write the config file, if it does not exist already.
 ```
 
 Copy rssdl.conf.example to rssdl.conf and configure your personal feed URL and the directory where you want the torrents to be saved.
