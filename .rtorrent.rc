@@ -1,30 +1,35 @@
-# Maximum and minimum number of peers to connect to per torrent.
-min_peers = 1
-max_peers = 100
-
-# Same as above but for seeding completed torrents (-1 = same as downloading)
-min_peers_seed = 1
-max_peers_seed = 50
-
-# Maximum number of uploads single torrent may use
-max_uploads = 10
+# Global upload and download rate in KiB. "0" for unlimited.
+throttle.global_down.max_rate.set_kb = 0
+throttle.global_up.max_rate.set_kb   = 2000
 
 # Maximum number of simultaneous downloads
-max_downloads_global = 10
+throttle.max_downloads.global.set = 10
 # Maximum number of simultaneous uploads
-max_uploads_global = 20
+throttle.max_uploads.global.set   = 20
 
-# Global upload and download rate in KiB. "0" for unlimited.
-download_rate = 0
-upload_rate = 2000
+# Maximum and minimum number of peers to connect to per torrent while downloading (`min_peers`, `max_peers`) Default: `100` and `200` respectively
+throttle.min_peers.normal.set = 1
+throttle.max_peers.normal.set = 100
+
+# Same as above but for seeding completed torrents (seeds per torrent), `-1` for same as downloading (`min_peers_seed`, `max_peers_seed`) Default: `-1` for both
+throttle.min_peers.seed.set = -1
+throttle.max_peers.seed.set = 50
+
+# Maximum number of simultaneous downloads and uploads slots per torrent (`max_uploads`) Default: `50` for both
+throttle.max_downloads.set = 50
+throttle.max_uploads.set = 50
+
+# Set the numwant field sent to the tracker, which indicates how many peers we want. 
+#  A negative value disables this feature. Default: `-1` (`tracker_numwant`)
+trackers.numwant.set = 100
 
 # Default directory to save the downloaded torrents.
-directory = /home/rtorrent/InProgress
+directory.default.set = /home/rtorrent/InProgress
 
 # Default session directory. Make sure you don't run multiple instance
 # of rtorrent using the same session directory. Perhaps using a
 # relative path?
-session = /home/rtorrent/.sessions
+session.path.set = /home/rtorrent/.sessions
 
 # Watch a directory for new torrents, and stop those that have been
 # deleted.
@@ -38,10 +43,11 @@ method.insert = move_to_custom1,simple,"d.directory.set=$d.custom1=;execute=mv,-
 method.set_key = event.download.finished,move_complete,"branch=is_custom1_set=,move_to_custom1=,move_to_default_dir="
 
 # Close torrents when diskspace is low.
-schedule = low_diskspace,5,60,close_low_diskspace=2000M
+schedule2 = low_diskspace,5,60,((close_low_diskspace,2000M))
 
-# Periodically save session data
-schedule = session_save,240,300,session_save=
+
+# Save all the sessions in every 12 hours instead of the default 20 minutes.
+schedule2 = session_save, 1200, 43200, ((session.save))
 
 # Enable the default ratio group.
 ratio.enable=
@@ -56,11 +62,9 @@ ratio.upload.set=2G
 # When seeding ratio is reached close the torrent
 method.set = group.seeding.ratio.command, d.close=, d.erase=
 
-# Port range to use for listening.
-port_range = 33101-33199
-
-# Start opening ports at a random position within the port range.
-port_random = yes
+# Listening port for incoming peer traffic (randomized)
+network.port_range.set = 33101-33199
+network.port_random.set = yes
 
 # Encryption options, set to none (default) or any combination of the following:
 # allow_incoming, try_outgoing, require, require_RC4, enable_retry, prefer_plaintext
@@ -69,7 +73,7 @@ port_random = yes
 # outgoing connections but retries with encryption if they fail, preferring
 # plaintext to RC4 encryption after the encrypted handshake
 #
-encryption = allow_incoming,try_outgoing,enable_retry,prefer_plaintext
+protocol.encryption.set = allow_incoming,try_outgoing,enable_retry
 
 # Sort the main view by ratio
 view.sort_current = main,greater=d.ratio=
@@ -103,12 +107,13 @@ schedule = sort_active,14,5,view.sort=active
 # "auto" (start and stop DHT as needed), or "on" (start DHT immediately).
 # The default is "off". For DHT to work, a session directory must be defined.
 # 
-dht = auto
-
 # UDP port to use for DHT. 
-# 
-dht_port = 6881
+dht.mode.set = auto
+
+# UDP port to use for DHT
+dht.port.set = 6881
 
 # Enable peer exchange (for torrents not marked private)
-#
 #peer_exchange = yes
+# Enable/disable peer exchange for torrents that aren't marked private. Disabled by default. (peer_exchange)
+protocol.pex.set = 1
