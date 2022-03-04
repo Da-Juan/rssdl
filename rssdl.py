@@ -73,17 +73,12 @@ def magnet2torrent(magnet, output_path):
 
     tempdir = tempfile.mkdtemp()
     session = lt.session()
-    params = {
-        "save_path": tempdir,
-        "storage_mode": lt.storage_mode_t(2),
-        "paused": False,
-        "auto_managed": True,
-        "duplicate_is_error": True,
-    }
-    handle = lt.add_magnet_uri(session, magnet, params)
+    params = lt.parse_magnet_uri(magnet)
+    params.save_path = tempdir
+    handle = session.add_torrent(params)
 
     logger.debug("Downloading Metadata...")
-    while not handle.has_metadata():
+    while not handle.status().has_metadata:
         try:
             sleep(1)
         except KeyboardInterrupt:
@@ -94,7 +89,7 @@ def magnet2torrent(magnet, output_path):
             sys.exit(0)
     session.pause()
 
-    torinfo = handle.get_torrent_info()
+    torinfo = handle.torrent_file()
     torfile = lt.create_torrent(torinfo)
 
     with open(output_path, "wb") as f:
